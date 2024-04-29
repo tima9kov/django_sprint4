@@ -11,7 +11,7 @@ from django.http import Http404
 from .forms import PostForm
 
 CURRENT_TIME = timezone.now()
-PUBLICATIONS_ON_MAIN = 5
+ELEMENTS_ON_PAGE = 5
 
 
 def get_published_posts():
@@ -35,7 +35,7 @@ class PostFormMixin(PostMixin):
 
 
 class PostListMixin(PostMixin):
-    paginate_by = PUBLICATIONS_ON_MAIN
+    paginate_by = ELEMENTS_ON_PAGE
 
 
 #CBV для навбара
@@ -124,13 +124,66 @@ class EditProfileUpdateView(LoginRequiredMixin, UpdateView):
 
 
 #CBV для постов
-class PostCreateView(CreateView):
-    pass
+class PostCreateView(
+    LoginRequiredMixin,
+    PostFormMixin,
+    CreateView,
+):
+    template_name = 'blog/create.html'
 
-class PostUpdateView(UpdateView):
-    pass
+    def form_valid(self, form):
+        form.instance.author = self.request.user
+        return super().form_valid(form)
 
-class PostDeleteView(DeleteView):
-    pass
+    def get_success_url(self):
+        return reverse(
+            'blog:profile',
+            kwargs={'username': self.request.user}
+        )
+    
+class PostUpdateView(
+    PostFormMixin,
+    UpdateView,
+):
+    template_name = 'blog/create.html'
+    pk_url_kwarg = 'id'
+    def dispatch(self, request, *args, **kwargs):
+        if self.get_object().author != request.user:
+            return redirect(
+                'blog:post_detail',
+                id=self.kwargs['id']
+            )
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_success_url(self):
+        return reverse(
+            'blog:post_detail',
+            kwargs={'id': self.kwargs['id']}
+        )
+
+class PostDeleteView(
+    PostMixin,
+    DeleteView,
+):
+    template_name = 'blog/create.html'
+    pk_url_kwarg = 'id'
+    def dispatch(self, request, *args, **kwargs):
+        if self.get_object().author != request.user:
+            return redirect(
+                'blog:post_detail',
+                id=self.kwargs['id']
+            )
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_success_url(self):
+        return reverse(
+            'blog:profile',
+            kwargs={'username': self.request.user}
+        )
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form'] = PostForm(instance=self.object)
+        return context
 
 #CBV для комментариев

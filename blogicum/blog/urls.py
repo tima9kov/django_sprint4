@@ -23,12 +23,12 @@ urlpatterns += [
          name='create_post',
      ),
      path(
-         'posts/<int:post_id>/edit/',
+         'posts/<int:id>/edit/',
          views.PostUpdateView.as_view(),
          name='edit_post',
      ),
      path(
-         'posts/<int:post_id>/delete/',
+         'posts/<int:id>/delete/',
          views.PostDeleteView.as_view(),
          name='delete_post',
      ),
