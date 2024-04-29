@@ -2,7 +2,7 @@ from typing import Any
 from django.db.models.base import Model as Model
 from django.db.models.query import QuerySet
 from django.shortcuts import render, get_object_or_404
-from blog.models import Category, Post
+from blog.models import Category, Post, User
 from datetime import datetime as dt
 from django.utils import timezone
 from django.views.generic import ListView, DetailView
@@ -71,4 +71,28 @@ class CategoryListView(ListView):
             is_published=True,
             slug=self.kwargs['category_slug']
         )
+        return context
+
+class ProfilePostListView(ListView):
+    model = Post,
+    ordering = 'id'
+    paginate_by = PUBLICATIONS_ON_MAIN
+    template_name='blog/profile.html'
+    
+    def get_queryset(self):
+        self.author=get_object_or_404(
+            User,
+            username=self.kwargs['username']
+        )
+        return Post.objects.select_related(
+            'author',
+            'location',
+            'category',
+        ).filter(
+            author=self.author
+        ).order_by('-pub_date')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['profile'] = self.author
         return context
