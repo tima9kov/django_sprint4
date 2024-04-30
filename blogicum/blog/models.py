@@ -1,8 +1,9 @@
-from django.db import models
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AbstractUser
+from django.db import models
+from django.urls import reverse
 
 User = get_user_model()
+
 
 class PublishedModel(models.Model):
     """
@@ -36,8 +37,8 @@ class Location(PublishedModel):
         verbose_name = "местоположение"
         verbose_name_plural = "Местоположения"
 
-    def __str__(self):
-        return self.name
+    def __str__(self) -> str:
+        return self.name[:25]
 
 
 class Category(PublishedModel):
@@ -63,44 +64,92 @@ class Category(PublishedModel):
         verbose_name = "категория"
         verbose_name_plural = "Категории"
 
-    def __str__(self):
-        return self.title
+    def __str__(self) -> str:
+        return f'"{self.title[:25]}" - {self.description[:50]}...'
 
 
 class Post(PublishedModel):
-    title = models.CharField(max_length=256, verbose_name="Название")
-    text = models.TextField(verbose_name="Текст")
+    """Модель публикации."""
+
+    title = models.CharField(
+        max_length=256,
+        verbose_name="Заголовок",
+    )
+    text = models.TextField(
+        verbose_name="Текст",
+    )
+    image = models.ImageField(
+        verbose_name="Фото",
+        upload_to="post_images/",
+        blank=True,
+    )
     pub_date = models.DateTimeField(
         verbose_name="Дата и время публикации",
         help_text=(
-            'Если установить дату и время в будущем — '
-            'можно делать отложенные публикации.'
+            "Если установить дату и время в будущем — "
+            "можно делать отложенные публикации."
         ),
     )
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         verbose_name="Автор публикации",
+        related_name="posts",
     )
     location = models.ForeignKey(
         Location,
         on_delete=models.SET_NULL,
         blank=True,
         null=True,
-        related_name="posts",
         verbose_name="Местоположение",
+        related_name="posts",
     )
     category = models.ForeignKey(
         Category,
         on_delete=models.SET_NULL,
         null=True,
-        related_name="post",
         verbose_name="Категория",
+        related_name="posts",
     )
 
     class Meta:
         verbose_name = "публикация"
         verbose_name_plural = "Публикации"
+        ordering = (
+            "-pub_date",
+            "title",
+        )
 
-    def __str__(self):
-        return self.title
+    def get_absolute_url(self) -> str:
+        return reverse("blog:post_detail", kwargs={"pk": self.pk})
+
+    def __str__(self) -> str:
+        return f"""
+            {self.pub_date:%Y.%m.%d %H:%M} | {self.author}
+            : "{self.title[:25]}" {self.text[:50]}
+            """
+
+
+class Comment(PublishedModel):
+    """Модель комментария для публикации."""
+
+    text = models.TextField(
+        verbose_name="Текст комментария",
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+    )
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        related_name="comments",
+    )
+
+    class Meta:
+        verbose_name = "комментарий"
+        verbose_name_plural = "Комментарии"
+        ordering = ("created_at",)
+
+    def __str__(self) -> str:
+        return f"{self.author}: {self.text[:50]}"
